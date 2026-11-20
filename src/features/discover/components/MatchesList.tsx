@@ -3,10 +3,12 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import type { MatchProfile } from "../types";
+import { getSharedInterests, generateIcebreakers } from "../icebreakers";
 
 export function MatchesList() {
   const [matches, setMatches] = useState<MatchProfile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [expandedMatchId, setExpandedMatchId] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/matches")
@@ -45,44 +47,107 @@ export function MatchesList() {
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="p-4">
-        <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-400">
-          {matches.length} {matches.length === 1 ? "Match" : "Matches"}
-        </h3>
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-400">
+            {matches.length} {matches.length === 1 ? "Mutual Match" : "Mutual Matches"}
+          </h3>
+          <span className="rounded-full bg-pink-100 px-2 py-0.5 text-[11px] font-bold text-pink-600">
+            100% Reciprocal
+          </span>
+        </div>
+
         <div className="space-y-3">
-          {matches.map((match) => (
-            <div
-              key={match.id}
-              className="flex items-center gap-4 rounded-xl bg-gradient-to-r from-pink-50 to-purple-50 p-3 shadow-sm ring-1 ring-pink-100"
-            >
-              <div className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-full ring-2 ring-pink-200">
-                <Image
-                  src={match.photo}
-                  alt={match.name}
-                  fill
-                  className="object-cover"
-                />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-baseline gap-2">
-                  <span className="font-semibold text-gray-900">{match.name}</span>
-                  <span className="text-sm text-gray-400">{match.age}</span>
+          {matches.map((match) => {
+            const shared = getSharedInterests(match.interests);
+            const icebreakers = generateIcebreakers(match);
+            const isExpanded = expandedMatchId === match.id;
+
+            return (
+              <div
+                key={match.id}
+                className="overflow-hidden rounded-2xl border border-pink-100 bg-white shadow-xs transition-all hover:shadow-sm"
+              >
+                <div
+                  onClick={() => setExpandedMatchId(isExpanded ? null : match.id)}
+                  className="flex cursor-pointer items-center gap-3 p-3 transition-colors hover:bg-pink-50/40"
+                >
+                  <div className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-full ring-2 ring-pink-200">
+                    <Image
+                      src={match.photo}
+                      alt={match.name}
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline gap-2">
+                      <span className="font-bold text-gray-900">{match.name}</span>
+                      <span className="text-sm text-gray-400">{match.age}</span>
+                    </div>
+                    <p className="truncate text-xs text-gray-500">{match.bio}</p>
+                    <div className="mt-1 flex items-center gap-2 text-[11px] text-gray-400">
+                      <span>{match.location}</span>
+                      {shared.length > 0 && (
+                        <span className="font-medium text-pink-600">
+                          • {shared.length} shared
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-pink-50 text-pink-500">
+                    <svg
+                      className={`h-4 w-4 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                    </svg>
+                  </div>
                 </div>
-                <p className="truncate text-sm text-gray-500">{match.bio}</p>
-                <div className="mt-1 flex items-center gap-1 text-xs text-gray-400">
-                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
-                  </svg>
-                  {match.location}
-                </div>
+
+                {/* Expanded Details: Shared Interests & Icebreakers */}
+                {isExpanded && (
+                  <div className="border-t border-pink-50 bg-gradient-to-b from-pink-50/30 to-purple-50/30 p-3.5">
+                    {shared.length > 0 && (
+                      <div className="mb-2.5">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-pink-600">
+                          ✨ What You Both Love
+                        </span>
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {shared.map((tag) => (
+                            <span
+                              key={tag}
+                              className="rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-pink-600 shadow-2xs ring-1 ring-pink-100"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-purple-600">
+                        💬 Tailored Icebreakers
+                      </span>
+                      <div className="mt-1 space-y-1">
+                        {icebreakers.map((prompt, idx) => (
+                          <div
+                            key={idx}
+                            className="rounded-lg bg-white/90 p-2 text-xs italic text-gray-700 shadow-2xs"
+                          >
+                            {prompt}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-pink-100">
-                <svg className="h-5 w-5 text-pink-500" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-                </svg>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>

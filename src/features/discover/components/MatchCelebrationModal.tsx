@@ -2,6 +2,7 @@
 
 import type { MatchProfile } from "../types";
 import Image from "next/image";
+import { getSharedInterests, generateIcebreakers } from "../icebreakers";
 
 interface MatchCelebrationModalProps {
   match: MatchProfile;
@@ -14,50 +15,84 @@ export function MatchCelebrationModal({
   onKeepSwiping,
   onViewMatches,
 }: MatchCelebrationModalProps) {
+  const shared = getSharedInterests(match.interests);
+  const icebreakers = generateIcebreakers(match);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="mx-4 w-full max-w-sm animate-bounce-in rounded-3xl bg-white p-8 text-center shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+      <div className="mx-auto w-full max-w-sm animate-bounce-in rounded-3xl bg-white p-6 text-center shadow-2xl">
         {/* Celebration header */}
-        <div className="mb-6">
-          <div className="mx-auto mb-3 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-pink-500 to-rose-500 shadow-lg">
-            <svg className="h-10 w-10 text-white" fill="currentColor" viewBox="0 0 24 24">
+        <div className="mb-4">
+          <div className="mx-auto mb-2 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-pink-500 to-rose-500 shadow-md">
+            <svg className="h-8 w-8 text-white" fill="currentColor" viewBox="0 0 24 24">
               <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
             </svg>
           </div>
-          <h2 className="bg-gradient-to-r from-pink-500 to-purple-600 bg-clip-text text-3xl font-black text-transparent">
+          <h2 className="bg-gradient-to-r from-pink-500 to-purple-600 bg-clip-text text-2xl font-black text-transparent">
             It&apos;s a Match!
           </h2>
-          <p className="mt-2 text-sm text-gray-500">
+          <p className="mt-1 text-xs text-gray-500">
             You and {match.name} liked each other
           </p>
         </div>
 
         {/* Match avatar */}
-        <div className="mx-auto mb-6 h-28 w-28 overflow-hidden rounded-full ring-4 ring-pink-200 shadow-lg">
+        <div className="mx-auto mb-3 h-20 w-20 overflow-hidden rounded-full ring-4 ring-pink-200 shadow-md">
           <Image
             src={match.photo}
             alt={match.name}
-            width={112}
-            height={112}
+            width={80}
+            height={80}
             className="h-full w-full object-cover"
           />
         </div>
 
-        <p className="mb-6 text-lg font-semibold text-gray-800">
+        <p className="text-base font-bold text-gray-800">
           {match.name}, {match.age}
         </p>
 
+        {/* Shared interests showcase */}
+        {shared.length > 0 && (
+          <div className="mt-3 rounded-xl bg-pink-50/70 p-2.5 text-left">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-pink-600">
+              ✨ Shared Interests ({shared.length})
+            </span>
+            <div className="mt-1.5 flex flex-wrap gap-1">
+              {shared.map((item) => (
+                <span
+                  key={item}
+                  className="rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-pink-700 shadow-2xs"
+                >
+                  {item}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Mutual icebreakers */}
+        {icebreakers.length > 0 && (
+          <div className="mt-3 rounded-xl bg-purple-50/70 p-2.5 text-left">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-purple-600">
+              💬 Instant Icebreaker
+            </span>
+            <p className="mt-1 text-xs italic text-gray-700">
+              {icebreakers[0]}
+            </p>
+          </div>
+        )}
+
         {/* Action buttons */}
-        <div className="flex flex-col gap-3">
+        <div className="mt-5 flex flex-col gap-2">
           <button
             onClick={onViewMatches}
-            className="w-full rounded-xl bg-gradient-to-r from-pink-500 to-purple-600 py-3 font-semibold text-white shadow-md transition-all hover:shadow-lg active:scale-[0.98]"
+            className="w-full rounded-xl bg-gradient-to-r from-pink-500 to-purple-600 py-2.5 text-sm font-semibold text-white shadow-md transition-all hover:shadow-lg active:scale-[0.98]"
           >
-            View Matches
+            Say Hello in Matches
           </button>
           <button
             onClick={onKeepSwiping}
-            className="w-full rounded-xl border border-gray-200 bg-white py-3 font-semibold text-gray-600 transition-all hover:bg-gray-50 active:scale-[0.98]"
+            className="w-full rounded-xl border border-gray-200 bg-white py-2.5 text-sm font-semibold text-gray-600 transition-all hover:bg-gray-50 active:scale-[0.98]"
           >
             Keep Swiping
           </button>
@@ -72,7 +107,7 @@ export function MatchCelebrationModal({
           100% { transform: scale(1); opacity: 1; }
         }
         .animate-bounce-in {
-          animation: bounce-in 0.5s ease-out;
+          animation: bounce-in 0.4s ease-out;
         }
       `}</style>
     </div>
