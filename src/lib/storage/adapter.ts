@@ -40,9 +40,12 @@ export function toPublicProfile(p: {
   };
 }
 
+type ProfileWithInterests = InternalProfile & { interests: string[] };
+
 export function getAllInternalProfiles(): InternalProfile[] {
+  const profileList = PROFILES as unknown as ProfileWithInterests[];
   if (isServerlessMode()) {
-    return PROFILES.map((p) => ({
+    return profileList.map((p) => ({
       id: p.id,
       name: p.name,
       age: p.age,
@@ -56,7 +59,7 @@ export function getAllInternalProfiles(): InternalProfile[] {
 
   const db = getDb();
   if (!db) {
-    return PROFILES.map((p) => ({
+    return profileList.map((p) => ({
       id: p.id,
       name: p.name,
       age: p.age,

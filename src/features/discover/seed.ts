@@ -41,23 +41,20 @@ export const PROFILES: Omit<InternalProfile, "interests">[] & { interests: strin
 
 export function seedProfiles(): void {
   const db = getDb();
+  if (!db) return;
 
-  const count = db.prepare("SELECT COUNT(*) as cnt FROM profiles").get() as { cnt: number };
-  if (count.cnt >= 32) return; // Already seeded — idempotent
+  const count = db.prepare("SELECT COUNT(*) as cnt FROM profiles").get() as { cnt: number } | undefined;
+  if (count && count.cnt >= 32) return; // Already seeded — idempotent
 
   const insert = db.prepare(`
     INSERT OR IGNORE INTO profiles (id, name, age, photo, bio, location, interests, incoming_like)
     VALUES (@id, @name, @age, @photo, @bio, @location, @interests, @incoming_like)
   `);
 
-  const insertMany = db.transaction((profiles: typeof PROFILES) => {
-    for (const p of profiles) {
-      insert.run({
-        ...p,
-        interests: JSON.stringify(p.interests),
-      });
-    }
-  });
-
-  insertMany(PROFILES);
+  for (const p of PROFILES) {
+    insert.run({
+      ...p,
+      interests: JSON.stringify(p.interests),
+    });
+  }
 }
