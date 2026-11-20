@@ -4,6 +4,7 @@ import { TabShell } from "@/features/discover/components/TabShell";
 import { SwipeDeck } from "@/features/discover/components/SwipeDeck";
 import { MatchesList } from "@/features/discover/components/MatchesList";
 import { MatchCelebrationModal } from "@/features/discover/components/MatchCelebrationModal";
+import { PrivacyAuditDrawer } from "@/features/discover/components/PrivacyAuditDrawer";
 import { useDiscoverFeed } from "@/features/discover/hooks/useDiscoverFeed";
 import { useState } from "react";
 import type { MatchProfile } from "@/features/discover/types";
@@ -20,7 +21,10 @@ export default function DiscoverPage() {
   };
 
   return (
-    <TabShell activeTab="discover">
+    <TabShell
+      activeTab="discover"
+      headerRight={<PrivacyAuditDrawer telemetry={feed.telemetry} />}
+    >
       {/* Sub-navigation: Swipe / Matches toggle */}
       <div className="flex border-b border-gray-200 bg-white">
         <button

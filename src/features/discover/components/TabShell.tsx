@@ -6,9 +6,10 @@ import { usePathname } from "next/navigation";
 interface TabShellProps {
   activeTab: "home" | "discover";
   children: React.ReactNode;
+  headerRight?: React.ReactNode;
 }
 
-export function TabShell({ children }: TabShellProps) {
+export function TabShell({ children, headerRight }: TabShellProps) {
   const pathname = usePathname();
   const isHome = pathname === "/";
   const isDiscover = pathname === "/discover";
@@ -16,10 +17,11 @@ export function TabShell({ children }: TabShellProps) {
   return (
     <div className="mx-auto flex h-dvh max-w-md flex-col bg-white shadow-xl">
       {/* Header */}
-      <header className="flex items-center justify-center border-b border-gray-100 bg-white px-4 py-3">
+      <header className="flex items-center justify-between border-b border-gray-100 bg-white px-4 py-2.5">
         <h1 className="bg-gradient-to-r from-pink-500 to-purple-600 bg-clip-text text-xl font-bold tracking-tight text-transparent">
           Coy
         </h1>
+        {headerRight}
       </header>
 
       {/* Main content */}
