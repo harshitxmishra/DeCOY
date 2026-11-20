@@ -1,21 +1,47 @@
-import Database from "better-sqlite3";
 import path from "path";
 
 const DB_PATH = path.join(process.cwd(), "data", "coy-discover.db");
 
-let _db: Database.Database | null = null;
+type SqliteDb = {
+  exec: (sql: string) => void;
+  prepare: (sql: string) => {
+    all: (...args: unknown[]) => unknown[];
+    get: (...args: unknown[]) => unknown;
+    run: (...args: unknown[]) => unknown;
+  };
+  transaction: <T>(fn: () => T) => () => T;
+  pragma: (sql: string) => void;
+  close: () => void;
+};
 
-export function getDb(): Database.Database {
+let _db: SqliteDb | null = null;
+
+export function isServerlessMode(): boolean {
+  // If explicitly Vercel and no local file/Turso URL is provided, run in serverless mode
+  return (process.env.VERCEL === "1" || !!process.env.NEXT_PUBLIC_VERCEL_ENV) && !process.env.TURSO_DATABASE_URL;
+}
+
+export function getDb(): SqliteDb | null {
+  if (isServerlessMode()) {
+    return null;
+  }
+
   if (!_db) {
-    _db = new Database(DB_PATH);
-    _db.pragma("journal_mode = WAL");
-    _db.pragma("foreign_keys = ON");
-    initSchema(_db);
+    try {
+      const Database = require("better-sqlite3");
+      _db = new Database(DB_PATH);
+      _db?.pragma("journal_mode = WAL");
+      _db?.pragma("foreign_keys = ON");
+      if (_db) initSchema(_db);
+    } catch (err) {
+      console.warn("Local SQLite initialization skipped or running serverless:", err);
+      return null;
+    }
   }
   return _db;
 }
 
-function initSchema(db: Database.Database): void {
+function initSchema(db: SqliteDb): void {
   db.exec(`
     CREATE TABLE IF NOT EXISTS profiles (
       id TEXT PRIMARY KEY,
@@ -46,6 +72,9 @@ function initSchema(db: Database.Database): void {
 /** Run a function inside a transaction for atomicity */
 export function transaction<T>(fn: () => T): T {
   const db = getDb();
+  if (!db) {
+    return fn();
+  }
   const run = db.transaction(fn);
   return run();
 }
@@ -53,7 +82,9 @@ export function transaction<T>(fn: () => T): T {
 /** Close DB connection (useful for tests and reset) */
 export function closeDb(): void {
   if (_db) {
-    _db.close();
+    try {
+      _db.close();
+    } catch {}
     _db = null;
   }
 }
@@ -61,8 +92,10 @@ export function closeDb(): void {
 /** Completely reset database — drops all data and re-runs schema */
 export function resetDb(): void {
   const db = getDb();
-  db.exec(`
-    DELETE FROM swipes;
-    DELETE FROM profiles;
-  `);
+  if (db) {
+    db.exec(`
+      DELETE FROM swipes;
+      DELETE FROM profiles;
+    `);
+  }
 }

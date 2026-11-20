@@ -1,7 +1,7 @@
 import { getDb } from "@/lib/db";
 import type { InternalProfile } from "./types";
 
-const PROFILES: Omit<InternalProfile, "interests">[] & { interests: string[] }[] = [
+export const PROFILES: Omit<InternalProfile, "interests">[] & { interests: string[] }[] = [
   // ─── 9 profiles with incoming_like = 1 (pre-seeded likers) ───
   { id: "p01", name: "Ananya Sharma", age: 22, photo: "/avatars/01.svg", bio: "Coffee connoisseur and aspiring novelist. Currently reading everything Murakami ever wrote.", location: "Delhi University", interests: ["reading", "coffee", "creative writing", "indie music"], incoming_like: 1 },
   { id: "p02", name: "Rohan Mehta", age: 23, photo: "/avatars/02.svg", bio: "CS grad who'd rather talk about film theory than algorithms.", location: "IIT Bombay", interests: ["cinema", "photography", "tech", "hiking"], incoming_like: 1 },

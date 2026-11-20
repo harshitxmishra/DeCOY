@@ -1,9 +1,12 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getFeed } from "@/features/discover/matching-service";
+import { parseSession, COOKIE_NAME } from "@/lib/session";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const feed = getFeed();
+    const cookie = request.cookies.get(COOKIE_NAME)?.value;
+    const session = parseSession(cookie);
+    const feed = getFeed(session);
     return NextResponse.json(feed);
   } catch (error) {
     console.error("GET /api/feed error:", error);

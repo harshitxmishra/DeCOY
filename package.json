@@ -21,6 +21,7 @@
   },
   "homepage": "https://github.com/harshitxmishra/DeCOY#readme",
   "dependencies": {
+    "@libsql/client": "^0.18.0",
     "better-sqlite3": "^13.2.0",
     "next": "^16.4.6",
     "react": "^19.3.1",
