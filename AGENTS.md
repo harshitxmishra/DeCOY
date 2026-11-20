@@ -1,6 +1,6 @@
 # AGENTS.md — Coy Discover Repository Rules
 
-> Shared autonomous-agent instructions for **Antigravity** and **Google Jules**.
+> Autonomous-agent instructions for **Antigravity** (and legacy/read-only Google Jules context).
 > Every agent working on this repository MUST read and follow these rules.
 
 ---
@@ -12,10 +12,10 @@ It implements a swipe-based mutual-match system where **likes stay private until
 
 | Stack         | Choice                                      |
 |--------------|----------------------------------------------|
-| Framework    | Next.js 15 (App Router)                       |
+| Framework    | Next.js 16 (App Router)                       |
 | Language     | TypeScript (strict)                            |
 | Styling      | Tailwind CSS v4                               |
-| Database     | SQLite via `better-sqlite3`                   |
+| Database     | SQLite via `better-sqlite3` (WAL mode)         |
 | Testing      | Vitest                                         |
 | Auth         | Single demo user (`demo-user`), no external auth |
 
@@ -24,27 +24,30 @@ It implements a swipe-based mutual-match system where **likes stay private until
 ## 2. Repository Layout
 
 ```
-├── AGENTS.md                                # THIS FILE — agent rules
-├── README.md                                # Setup docs & API contract
-├── PART_A_NOTES.md                          # Part A feature proposals
+├── AGENTS.md                                # THIS FILE — agent rules & guidelines
+├── README.md                                # Setup docs, API contract & privacy architecture
+├── PART_A_NOTES.md                          # Part A teardown & 2 core feature proposals
 ├── package.json / tsconfig.json / next.config.ts
-├── .github/workflows/ci.yml                 # CI pipeline
-├── data/                                    # SQLite DB (gitignored at runtime)
-├── public/avatars/                          # 32 local SVG portraits
+├── .github/workflows/ci.yml                 # CI pipeline (lint, tsc, test, build)
+├── data/
+│   └── .gitkeep                             # SQLite DB (coy-discover.db gitignored)
+├── public/avatars/                          # 32 local SVG portraits (01.svg – 32.svg)
 └── src/
     ├── app/
-    │   ├── layout.tsx                       # Root layout
-    │   ├── page.tsx                         # Home tab (blank)
-    │   ├── discover/page.tsx                # Discover tab
+    │   ├── layout.tsx                       # Root layout & font
+    │   ├── page.tsx                         # Home tab (intentionally blank per spec)
+    │   ├── discover/page.tsx                # Discover tab (swipe deck, match modal, matches)
     │   └── api/{feed,swipe,matches,reset}/route.ts
     ├── features/discover/
-    │   ├── types.ts                         # Public & internal types
-    │   ├── seed.ts                          # 32-profile idempotent seeder
-    │   ├── matching-service.ts              # Core business logic
-    │   ├── components/                      # React UI components
-    │   └── hooks/useDiscoverFeed.ts         # Client-side hook
-    ├── lib/db.ts                            # SQLite connection & schema
-    └── tests/matching-privacy.test.ts       # Automated invariant tests
+    │   ├── types.ts                         # Public (safe) & internal server-only types
+    │   ├── seed.ts                          # 32-profile idempotent seeder (9 pre-seeded likers)
+    │   ├── matching-service.ts              # Core matching logic & privacy sanitization
+    │   ├── components/                      # React UI components (SwipeDeck, ProfileCard, etc.)
+    │   └── hooks/useDiscoverFeed.ts         # Client-side feed & swipe hook
+    ├── lib/db.ts                            # SQLite connection, schema init, WAL mode
+    └── tests/
+        ├── matching-privacy.test.ts         # 12 automated invariant tests
+        └── setup.ts                         # Test runner setup
 ```
 
 ---
@@ -58,7 +61,7 @@ npm install
 # Development server
 npm run dev
 
-# Production build
+# Production build & start
 npm run build && npm start
 
 # Type-check
@@ -67,7 +70,7 @@ npx tsc --noEmit
 # Lint
 npm run lint
 
-# Run tests
+# Run all automated tests
 npm test
 
 # Reset demo data (via API)
@@ -81,7 +84,7 @@ curl -X POST http://localhost:3000/api/reset
 - SQLite file lives at `data/coy-discover.db` (gitignored).
 - Schema is auto-created on first DB access via `src/lib/db.ts`.
 - Seeding is **idempotent** — `seedProfiles()` only inserts if < 32 profiles exist.
-- `POST /api/reset` wipes swipes + profiles, then re-seeds.
+- `POST /api/reset` (and `/reset` rewrite) wipes swipes + profiles, then re-seeds.
 - Always use `WAL` journal mode for concurrent read safety.
 - Use transactions for any multi-statement write operation.
 
