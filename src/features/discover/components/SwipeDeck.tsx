@@ -4,7 +4,7 @@ import type { PublicProfile, MatchProfile } from "../types";
 import { ProfileCard } from "./ProfileCard";
 import { EmptyFeedState } from "./EmptyFeedState";
 import { InterestFilterBar, FilterCategory, matchesCategory } from "./InterestFilterBar";
-import { useRef, useState, useCallback, useMemo } from "react";
+import { useRef, useState, useCallback, useMemo, useEffect } from "react";
 
 interface SwipeDeckProps {
   profiles: PublicProfile[];

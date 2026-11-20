@@ -154,7 +154,7 @@ export function PrivacyAuditModal({
                   {showJson ? "Hide Raw Payload JSON ▲" : "View Raw Payload JSON ▼"}
                 </button>
 
-                {showJson && telemetry.rawSample && (
+                {showJson && Boolean(telemetry.rawSample) && (
                   <pre className="mt-2 max-h-40 overflow-x-auto rounded-xl bg-gray-900 p-3 text-[10px] text-emerald-400">
                     {JSON.stringify(telemetry.rawSample, null, 2)}
                   </pre>

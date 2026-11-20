@@ -4,6 +4,14 @@ import { describe, it, expect, beforeEach, afterAll } from "vitest";
 // This avoids needing HTTP test infrastructure while verifying all core invariants
 
 import { getFeed, recordSwipe, getMatches, resetDemo } from "@/features/discover/matching-service";
+import { matchesCategory, FilterCategory } from "@/features/discover/components/InterestFilterBar";
+import { getSharedInterests, generateIcebreakers } from "@/features/discover/icebreakers";
+import { parseSession, serializeSession, SessionData } from "@/lib/session";
+import {
+  getFeedWithSession,
+  recordSwipeWithSession,
+  getMatchesWithSession,
+} from "@/lib/storage/adapter";
 import { closeDb } from "@/lib/db";
 import fs from "fs";
 import path from "path";
@@ -27,7 +35,6 @@ describe("Coy Discover — Matching & Privacy", () => {
     cleanDb();
   });
 
-  // After all tests, clean up
   afterAll(() => {
     cleanDb();
   });
@@ -103,14 +110,9 @@ describe("Coy Discover — Matching & Privacy", () => {
   });
 
   it("should list mutual matches via getMatches()", () => {
-    // Like two pre-seeded likers
     recordSwipe("p03", "like");
     recordSwipe("p04", "like");
-
-    // Pass on another pre-seeded liker
     recordSwipe("p05", "pass");
-
-    // Like a non-liker
     recordSwipe("p10", "like");
 
     const matches = getMatches();
@@ -139,20 +141,16 @@ describe("Coy Discover — Matching & Privacy", () => {
   });
 
   it("should reset demo state cleanly", () => {
-    // Make some swipes
     recordSwipe("p01", "like");
     recordSwipe("p10", "pass");
 
-    // Reset
     const resetResult = resetDemo();
     expect(resetResult.success).toBe(true);
     expect(resetResult.profileCount).toBe(32);
 
-    // Feed should be full again
     const feed = getFeed();
     expect(feed.remaining).toBe(32);
 
-    // Matches should be empty
     const matches = getMatches();
     expect(matches.count).toBe(0);
   });
@@ -161,7 +159,6 @@ describe("Coy Discover — Matching & Privacy", () => {
     recordSwipe("p01", "like");
     recordSwipe("p10", "pass");
 
-    // Close and re-open DB (simulates server restart)
     closeDb();
 
     const feed = getFeed();
@@ -172,5 +169,106 @@ describe("Coy Discover — Matching & Privacy", () => {
     const matches = getMatches();
     expect(matches.count).toBe(1);
     expect(matches.matches[0].id).toBe("p01");
+  });
+});
+
+describe("Coy Discover — Standout Features & Serverless Adapter", () => {
+  it("should filter profiles correctly by interest category", () => {
+    const feed = getFeed();
+
+    // Category: Tech
+    const techProfiles = feed.profiles.filter((p) => matchesCategory(p, "Tech"));
+    expect(techProfiles.length).toBeGreaterThan(0);
+    for (const p of techProfiles) {
+      expect(
+        p.interests.some((i) =>
+          ["tech", "coding", "web dev", "open source", "cloud computing", "machine learning", "physics", "astronomy", "space", "biotechnology"].some((k) =>
+            i.toLowerCase().includes(k)
+          )
+        )
+      ).toBe(true);
+    }
+
+    // Category: Coffee
+    const coffeeProfiles = feed.profiles.filter((p) => matchesCategory(p, "Coffee"));
+    expect(coffeeProfiles.length).toBeGreaterThan(0);
+    for (const p of coffeeProfiles) {
+      expect(
+        p.interests.some((i) =>
+          ["coffee", "chai", "tea"].some((k) => i.toLowerCase().includes(k))
+        )
+      ).toBe(true);
+    }
+
+    // Category: All
+    const allProfiles = feed.profiles.filter((p) => matchesCategory(p, "All" as FilterCategory));
+    expect(allProfiles.length).toBe(feed.profiles.length);
+  });
+
+  it("should compute shared interests and generate tailored mutual icebreakers", () => {
+    const sampleProfile = {
+      name: "Ananya Sharma",
+      location: "Delhi University",
+      interests: ["coffee", "indie music", "reading", "creative writing"],
+    };
+
+    const shared = getSharedInterests(sampleProfile.interests);
+    expect(shared).toContain("coffee");
+    expect(shared).toContain("indie music");
+
+    const icebreakers = generateIcebreakers(sampleProfile);
+    expect(icebreakers.length).toBe(2);
+    expect(icebreakers[0]).toContain("coffee");
+  });
+
+  it("should serialize and deserialize session state with signature verification", () => {
+    const session: SessionData = {
+      swipes: [
+        { profileId: "p01", action: "like", isMatch: true, createdAt: new Date().toISOString() },
+        { profileId: "p10", action: "pass", isMatch: false, createdAt: new Date().toISOString() },
+      ],
+      messages: [
+        { id: "m1", matchId: "p01", sender: "user", text: "Hey Ananya!", timestamp: new Date().toISOString() },
+      ],
+    };
+
+    const encoded = serializeSession(session);
+    expect(typeof encoded).toBe("string");
+    expect(encoded).toContain(".");
+
+    const decoded = parseSession(encoded);
+    expect(decoded.swipes.length).toBe(2);
+    expect(decoded.messages.length).toBe(1);
+    expect(decoded.swipes[0].profileId).toBe("p01");
+    expect(decoded.messages[0].text).toBe("Hey Ananya!");
+
+    // Tampered payload fails verification
+    const tampered = "tampered_payload." + encoded.split(".")[1];
+    const invalid = parseSession(tampered);
+    expect(invalid.swipes).toEqual([]);
+  });
+
+  it("should operate in stateless serverless mode without database writes", () => {
+    let session: SessionData = { swipes: [], messages: [] };
+
+    // Record swipe in session
+    const swipe1 = recordSwipeWithSession("p01", "like", session);
+    expect(swipe1.result.matched).toBe(true);
+    session = swipe1.updatedSession;
+    expect(session.swipes.length).toBe(1);
+
+    // Feed with session excludes swiped profile
+    const feed = getFeedWithSession(session);
+    expect(feed.profiles.some((p) => p.id === "p01")).toBe(false);
+
+    // Matches with session extracts mutual match
+    const matches = getMatchesWithSession(session);
+    expect(matches.count).toBe(1);
+    expect(matches.matches[0].id).toBe("p01");
+
+    // Zero leakage verification on session models
+    for (const match of matches.matches) {
+      expect(match).not.toHaveProperty("incoming_like");
+    }
   });
 });
