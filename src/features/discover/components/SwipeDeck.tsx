@@ -191,46 +191,46 @@ export function SwipeDeck({ profiles, loading, onSwipe, onMatch, onReset, remain
 
               <ProfileCard profile={currentProfile} />
             </div>
-
-            {/* Remaining count */}
-            <div className="absolute bottom-2 right-4 text-xs text-gray-300">
-              {filteredProfiles.length} remaining
-            </div>
           </div>
 
           {/* Action buttons */}
-          <div className="flex flex-col items-center gap-2 pb-4">
+          <div className="flex flex-col items-center gap-1.5 pb-3">
             <div className="flex items-center justify-center gap-6">
-              <button
-                onClick={() => handleSwipe("pass")}
-                disabled={swiping}
-                className="group relative flex h-14 w-14 items-center justify-center rounded-full border-2 border-red-200 bg-white text-red-400 shadow-md transition-all hover:scale-110 hover:bg-red-50 hover:shadow-lg active:scale-95 disabled:opacity-50"
-                aria-label="Pass"
-              >
-                <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-                <kbd className="absolute -bottom-2 hidden rounded border border-gray-200 bg-gray-50 px-1 text-[9px] font-bold text-gray-400 shadow-2xs group-hover:border-red-200 group-hover:text-red-400 sm:inline">
-                  ←
-                </kbd>
-              </button>
+              <div className="flex flex-col items-center gap-1">
+                <button
+                  onClick={() => handleSwipe("pass")}
+                  disabled={swiping}
+                  className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-red-200 bg-white text-red-400 shadow-md transition-all hover:scale-110 hover:bg-red-50 hover:shadow-lg active:scale-95 disabled:opacity-50"
+                  aria-label="Pass"
+                >
+                  <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+                <span className="hidden text-[10px] text-gray-400 sm:block">
+                  Pass <kbd className="rounded border border-gray-200 bg-gray-50 px-1 py-0.2 text-[9px]">←</kbd>
+                </span>
+              </div>
 
-              <button
-                onClick={() => handleSwipe("like")}
-                disabled={swiping}
-                className="group relative flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-pink-500 to-rose-500 text-white shadow-lg transition-all hover:scale-110 hover:shadow-xl active:scale-95 disabled:opacity-50"
-                aria-label="Like"
-              >
-                <svg className="h-8 w-8" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-                </svg>
-                <kbd className="absolute -bottom-2 hidden rounded border border-pink-400 bg-pink-600 px-1 text-[9px] font-bold text-white shadow-2xs group-hover:bg-pink-700 sm:inline">
-                  →
-                </kbd>
-              </button>
+              <div className="flex flex-col items-center gap-1">
+                <button
+                  onClick={() => handleSwipe("like")}
+                  disabled={swiping}
+                  className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-pink-500 to-rose-500 text-white shadow-lg transition-all hover:scale-110 hover:shadow-xl active:scale-95 disabled:opacity-50"
+                  aria-label="Like"
+                >
+                  <svg className="h-8 w-8" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                  </svg>
+                </button>
+                <span className="hidden text-[10px] text-gray-400 sm:block">
+                  Like <kbd className="rounded border border-pink-200 bg-pink-50 px-1 py-0.2 text-[9px] text-pink-600">→</kbd>
+                </span>
+              </div>
             </div>
-            <span className="hidden text-[10px] text-gray-400 sm:block">
-              Press <kbd className="rounded bg-gray-100 px-1 py-0.5">←</kbd> to pass or <kbd className="rounded bg-gray-100 px-1 py-0.5">→</kbd> to like
+
+            <span className="text-[11px] text-gray-400">
+              {filteredProfiles.length} {filteredProfiles.length === 1 ? "profile" : "profiles"} left in {selectedCategory}
             </span>
           </div>
         </>

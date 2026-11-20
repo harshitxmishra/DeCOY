@@ -12,31 +12,21 @@ import {
   recordSwipeWithSession,
   getMatchesWithSession,
 } from "@/lib/storage/adapter";
-import { closeDb } from "@/lib/db";
-import fs from "fs";
-import path from "path";
+import { resetDb, closeDb } from "@/lib/db";
+import { seedProfiles } from "@/features/discover/seed";
 
-const DB_PATH = path.join(process.cwd(), "data", "coy-discover.db");
-
-function cleanDb() {
-  closeDb();
-  if (fs.existsSync(DB_PATH)) {
-    fs.unlinkSync(DB_PATH);
-  }
-  // Also clean WAL/SHM files
-  for (const ext of ["-journal", "-wal", "-shm"]) {
-    const p = DB_PATH + ext;
-    if (fs.existsSync(p)) fs.unlinkSync(p);
-  }
+function resetTestState() {
+  resetDb();
+  seedProfiles();
 }
 
 describe("Coy Discover — Matching & Privacy", () => {
   beforeEach(() => {
-    cleanDb();
+    resetTestState();
   });
 
   afterAll(() => {
-    cleanDb();
+    closeDb();
   });
 
   it("should seed at least 30 profiles in the feed", () => {
@@ -173,6 +163,9 @@ describe("Coy Discover — Matching & Privacy", () => {
 });
 
 describe("Coy Discover — Standout Features & Serverless Adapter", () => {
+  beforeEach(() => {
+    resetTestState();
+  });
   it("should filter profiles correctly by interest category", () => {
     const feed = getFeed();
 
