@@ -5,6 +5,7 @@ A production-grade, mobile-first **Discover tab** dating application built with 
 Implements the foundational promise of Coy: **likes stay private until they're mutual**.
 
 [![CI](https://github.com/harshitxmishra/DeCOY/actions/workflows/ci.yml/badge.svg)](https://github.com/harshitxmishra/DeCOY/actions/workflows/ci.yml)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fharshitxmishra%2FDeCOY)
 
 ---
 
