@@ -1,6 +1,6 @@
 # AGENTS.md — Coy Discover Repository Rules
 
-> Autonomous-agent instructions for **Antigravity** (and legacy/read-only Google Jules context).
+> Autonomous-agent instructions for **Antigravity**.
 > Every agent working on this repository MUST read and follow these rules.
 
 ---
@@ -15,8 +15,8 @@ It implements a swipe-based mutual-match system where **likes stay private until
 | Framework    | Next.js 16 (App Router)                       |
 | Language     | TypeScript (strict)                            |
 | Styling      | Tailwind CSS v4                               |
-| Database     | SQLite via `better-sqlite3` (WAL mode)         |
-| Testing      | Vitest                                         |
+| Persistence  | Dual-Mode: SQLite (`better-sqlite3` WAL) locally + Stateless Session / libSQL on Vercel |
+| Testing      | Vitest (16 invariant tests)                    |
 | Auth         | Single demo user (`demo-user`), no external auth |
 
 ---
@@ -35,18 +35,23 @@ It implements a swipe-based mutual-match system where **likes stay private until
 └── src/
     ├── app/
     │   ├── layout.tsx                       # Root layout & font
-    │   ├── page.tsx                         # Home tab (intentionally blank per spec)
+    │   ├── page.tsx                         # Home tab (blank per spec)
     │   ├── discover/page.tsx                # Discover tab (swipe deck, match modal, matches)
-    │   └── api/{feed,swipe,matches,reset}/route.ts
+    │   └── api/{feed,swipe,matches,reset,messages}/route.ts
     ├── features/discover/
     │   ├── types.ts                         # Public (safe) & internal server-only types
     │   ├── seed.ts                          # 32-profile idempotent seeder (9 pre-seeded likers)
     │   ├── matching-service.ts              # Core matching logic & privacy sanitization
-    │   ├── components/                      # React UI components (SwipeDeck, ProfileCard, etc.)
-    │   └── hooks/useDiscoverFeed.ts         # Client-side feed & swipe hook
-    ├── lib/db.ts                            # SQLite connection, schema init, WAL mode
+    │   ├── icebreakers.ts                   # Shared-interest calculation & mutual icebreakers
+    │   ├── components/                      # SwipeDeck, ProfileCard, MatchCelebrationModal, MatchesList,
+    │   │                                    # MatchChatModal, InterestFilterBar, PrivacyAuditDrawer
+    │   └── hooks/useDiscoverFeed.ts         # Client-side feed, swipe & telemetry hook
+    ├── lib/
+    │   ├── db.ts                            # SQLite connection & serverless detection
+    │   ├── session.ts                       # HMAC-signed session cookie encoder/decoder
+    │   └── storage/adapter.ts               # Dual-mode local SQLite + Vercel state adapter
     └── tests/
-        ├── matching-privacy.test.ts         # 12 automated invariant tests
+        ├── matching-privacy.test.ts         # 16 automated invariant tests
         └── setup.ts                         # Test runner setup
 ```
 
@@ -70,7 +75,7 @@ npx tsc --noEmit
 # Lint
 npm run lint
 
-# Run all automated tests
+# Run all 16 automated tests
 npm test
 
 # Reset demo data (via API)
@@ -79,14 +84,13 @@ curl -X POST http://localhost:3000/api/reset
 
 ---
 
-## 4. Database Rules
+## 4. Database & Persistence Rules
 
 - SQLite file lives at `data/coy-discover.db` (gitignored).
 - Schema is auto-created on first DB access via `src/lib/db.ts`.
 - Seeding is **idempotent** — `seedProfiles()` only inserts if < 32 profiles exist.
 - `POST /api/reset` (and `/reset` rewrite) wipes swipes + profiles, then re-seeds.
-- Always use `WAL` journal mode for concurrent read safety.
-- Use transactions for any multi-statement write operation.
+- **Serverless persistence on Vercel:** Handled via `src/lib/storage/adapter.ts` and `src/lib/session.ts` through an authenticated HTTP-only cookie (`coy_session`) when no cloud database env vars (`TURSO_DATABASE_URL`) are configured. Local development continues using SQLite.
 
 ---
 
@@ -98,13 +102,13 @@ curl -X POST http://localhost:3000/api/reset
 
 2. **A match occurs ONLY when:** a profile has `incoming_like = 1` **AND** the demo user swipes `like` on that profile.
 
-3. **`GET /api/feed`** returns profiles with ONLY these fields: `id`, `name`, `age`, `photo`, `bio`, `location`, `interests`. No `incoming_like`, no `likedByUser`, no match hints.
+3. **`GET /api/feed`** returns profiles with ONLY public fields: `id`, `name`, `age`, `photo`, `bio`, `location`, `interests`. No `incoming_like`, no `likedByUser`, no match hints.
 
 4. **`GET /api/matches`** returns ONLY mutual matches. Never include one-sided likes.
 
 5. **`POST /api/swipe`** response includes `matched: true` ONLY for mutual matches.
 
-6. **Automated tests** in `src/tests/matching-privacy.test.ts` verify all these invariants. All tests MUST pass before any PR merge.
+6. **Automated tests** in `src/tests/matching-privacy.test.ts` verify all these invariants. All 16 tests MUST pass before any PR merge.
 
 ---
 
@@ -114,14 +118,13 @@ curl -X POST http://localhost:3000/api/reset
 - **Feature-first folder structure** — all Discover logic lives under `src/features/discover/`.
 - **Server vs client** — API routes and matching-service are server-only. Components marked `"use client"`.
 - **No external image URLs** — all avatars are local SVGs under `public/avatars/`.
-- **Mobile-first** — design for 375px+ screens, responsive up to desktop.
+- **Mobile-first** — design for 375px+ screens, responsive up to desktop with keyboard shortcuts.
 
 ---
 
 ## 7. Git Conventions
 
-- Branch naming: `feature/<name>`, `fix/<name>`, `chore/<name>`
-- Commit messages: conventional commits (`feat:`, `fix:`, `test:`, `docs:`, `chore:`)
+- Conventional commits: `feat:`, `fix:`, `refactor:`, `test:`, `docs:`, `chore:`
 - CI must pass (typecheck + lint + tests + build) before merge.
 
 ---

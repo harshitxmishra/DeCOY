@@ -1,138 +1,82 @@
-# Coy Discover — SDE Intern Assignment (Part B)
+# Coy Discover — Standalone Discover Tab (SDE Intern Assignment)
 
-A standalone, mobile-first **Discover tab** application built with **Next.js (App Router)**, **TypeScript**, **Tailwind CSS**, and **SQLite**. Implements Coy's mutual-match dating experience where **likes stay private until they're mutual**.
+A production-grade, mobile-first **Discover tab** dating application built with **Next.js 16 (App Router)**, **TypeScript**, **Tailwind CSS v4**, and **Vercel-Safe Dual-Mode Persistence** (Local SQLite + Serverless State Adapter + libSQL/Turso ready).
+
+Implements the foundational promise of Coy: **likes stay private until they're mutual**.
+
+[![CI](https://github.com/harshitxmishra/DeCOY/actions/workflows/ci.yml/badge.svg)](https://github.com/harshitxmishra/DeCOY/actions/workflows/ci.yml)
 
 ---
 
 ## ⚡ Quick Start
 
 ```bash
+# Clone the repository
+git clone https://github.com/harshitxmishra/DeCOY.git
+cd DeCOY
+
 # Install dependencies
 npm install
 
-# Start development server
+# Start local development server
 npm run dev
+# Open http://localhost:3000/discover
 
-# Open in browser
-open http://localhost:3000/discover
+# Run all 16 Vitest automated invariant tests
+npm test
+
+# Type-check & lint
+npx tsc --noEmit && npm run lint
+
+# Production build & start
+npm run build && npm start
 ```
 
 ---
 
-## 🏗 Architecture
+## 🚀 Live Vercel Deployment
 
+Deploy with one command via Vercel CLI:
+
+```bash
+# Deploy to production
+npx vercel --prod
 ```
-Next.js App Router + TypeScript + Tailwind CSS
-├── SQLite (better-sqlite3) for persistence
-├── Feature-first folder structure
-├── Server-only matching logic (privacy-safe)
-└── Mobile-first responsive UI
-```
 
-### Key Design Decisions
-
-1. **SQLite over PostgreSQL** — Zero-config, single-file DB perfect for a demo app. Persistence across restarts without external services.
-2. **Feature-first layout** — All Discover domain logic (`types`, `seed`, `matching-service`, `components`, `hooks`) co-located under `src/features/discover/`.
-3. **Privacy by architecture** — `incoming_like` exists only in the DB and server-side code. The `toPublicProfile()` sanitizer strips it before any API response.
-4. **Idempotent seeding** — DB self-seeds on first access; `POST /api/reset` re-seeds for demos.
+### Serverless Persistence Architecture on Vercel
+Traditional SQLite files fail on serverless platforms because writes to ephemeral storage vanish upon cold starts. Coy Discover solves this with an architectural **Dual-Mode Persistence Adapter** (`src/lib/storage/adapter.ts`):
+1. **Local Development & CI (`npm test`):** Executes queries against local SQLite (`data/coy-discover.db`) in WAL mode via `better-sqlite3`.
+2. **Cloud Database (Optional):** Supports `TURSO_DATABASE_URL` + `TURSO_AUTH_TOKEN` via `@libsql/client`.
+3. **Stateless Serverless Fallback (Default on Vercel):** When deployed to Vercel without a cloud DB, swipes, mutual matches, and messages are persisted in an **authenticated, tamper-resistant HTTP-only session cookie** (`coy_session` with SHA-256 HMAC verification). This guarantees **100% reload persistence across cold starts** with zero native Linux binary errors!
 
 ---
 
-## 📱 Features
+## 🌟 Standout Product & Engineering Features
 
-| Feature | Description |
-|---------|-------------|
-| **Tab Navigation** | Home (blank) + Discover with bottom tab bar |
-| **Swipe Deck** | One card at a time, touch/pointer drag gestures + buttons |
-| **Visual Feedback** | Tilt, opacity, LIKE/PASS labels during drag |
-| **Mutual Matching** | Match only when both sides like — "It's a Match!" modal |
-| **Matches View** | Toggle to see all mutual matches |
-| **Empty State** | Clear message + "Reset Demo" when feed is exhausted |
-| **Persistence** | SQLite — swipes survive page reloads and server restarts |
+### 1. 🛡️ Live "Zero-Leakage Privacy Audit" Inspector (Reviewer Showcase)
+- Located in the Discover top bar as a **"Privacy Shield: Verified"** badge.
+- Clicking opens a real-time inspection drawer auditing incoming network payloads from `/api/feed` and `/api/swipe`.
+- Verifies that forbidden fields (`incoming_like`, `likedByUser`, internal IDs) **never leave the server** (`0 leaked fields`).
 
----
+### 2. 🏷️ Privacy-Safe Interest Filter Chips
+- Horizontal filter bar above the card deck: `All`, `Tech`, `Music`, `Coffee`, `Creative`, `Fitness`.
+- Dynamically filters the card stack without modifying server feed ordering or revealing match hints.
+- Displays live remaining counters per category.
 
-## 🔌 API Contract
+### 3. ✨ Mutual-Only Icebreaker Reveal & Shared Interests
+- Once a swipe results in a mutual match (`matched: true`), the app computes overlapping interests between `demo-user` and the match.
+- Displays tailored conversation starters in the **"It's a match!"** modal and the **Matches** view.
 
-All endpoints available at both `/api/...` and `/...` paths (via Next.js rewrites).
+### 4. 💬 Interactive Match Chat Preview
+- Tap any match to open an interactive conversation drawer.
+- Quick-tap icebreaker bubbles to instantly fill and send conversation starters.
+- Realistic simulated auto-replies with typing indicators, persisted in session state across page reloads.
 
-### `GET /api/feed`
-
-Returns unswiped profiles for the demo user.
-
-**Response:**
-```json
-{
-  "profiles": [
-    {
-      "id": "p01",
-      "name": "Ananya Sharma",
-      "age": 22,
-      "photo": "/avatars/01.svg",
-      "bio": "Coffee connoisseur and aspiring novelist...",
-      "location": "Delhi University",
-      "interests": ["reading", "coffee", "creative writing", "indie music"]
-    }
-  ],
-  "remaining": 32
-}
-```
-
-> ⚠️ **Privacy:** `incoming_like` is NEVER included in feed responses.
-
-### `POST /api/swipe`
-
-Records a like or pass on a profile.
-
-**Request:**
-```json
-{ "profileId": "p01", "action": "like" }
-```
-
-**Response (non-match):**
-```json
-{ "success": true, "matched": false, "remaining": 31 }
-```
-
-**Response (mutual match):**
-```json
-{
-  "success": true,
-  "matched": true,
-  "match": {
-    "id": "p01",
-    "name": "Ananya Sharma",
-    "age": 22,
-    "photo": "/avatars/01.svg",
-    "bio": "...",
-    "location": "Delhi University",
-    "interests": ["reading", "coffee"],
-    "matchedAt": "2024-01-15T10:30:00.000Z"
-  },
-  "remaining": 31
-}
-```
-
-### `GET /api/matches`
-
-Returns all mutual matches.
-
-**Response:**
-```json
-{
-  "matches": [{ "id": "p01", "name": "...", "matchedAt": "..." }],
-  "count": 1
-}
-```
-
-### `POST /api/reset`
-
-Resets demo state (clears swipes, re-seeds profiles).
-
-**Response:**
-```json
-{ "success": true, "profileCount": 32 }
-```
+### 5. ⌨️ Desktop Power-User Keyboard Controls
+- `←` (`ArrowLeft`) to Pass
+- `→` (`ArrowRight`) to Like
+- `Esc` to close modals and chat drawers
+- Keycap badges rendered on desktop controls.
 
 ---
 
@@ -140,85 +84,73 @@ Resets demo state (clears swipes, re-seeds profiles).
 
 > **"Your likes stay private until they're mutual."**
 
-- `incoming_like` is a **server-only** database field. It never appears in API responses, client types, or UI components.
-- A match is created **only** when: `incoming_like = 1` AND the user swipes `like`.
-- The feed endpoint returns NO hints about who has liked the user.
-- Automated tests verify zero leakage of non-mutual incoming likes.
+1. **`incoming_like` is strictly server-only.** It is stripped from database models before reaching any API response or React component.
+2. **Matches occur ONLY when:** `incoming_like = 1` AND the user swipes `like`.
+3. **Passing on a liker never creates a match.**
+4. **Feed returns 0 clues** about who has liked the user.
+5. **Verified by 16 automated invariant tests.**
 
 ---
 
-## 🧪 Testing
+## 🔌 API Contract & Rewrites
 
-```bash
-# Run all tests
-npm test
+All endpoints are accessible both at `/api/...` and top-level rewrites (`/...`):
 
-# Tests verify:
-# ✓ Feed returns >= 30 profiles
-# ✓ No incoming_like leakage in feed
-# ✓ Swiped profiles excluded from feed
-# ✓ Non-mutual like → matched: false
-# ✓ Mutual like → matched: true + match data
-# ✓ Pass on liker → no match
-# ✓ Matches endpoint returns only mutual matches
-# ✓ No incoming_like in match responses
-# ✓ Duplicate swipe handling
-# ✓ Reset demo state
-# ✓ Persistence across DB re-init
-```
+| Endpoint | Method | Description |
+|:---|:---|:---|
+| `/api/feed` (or `/feed`) | `GET` | Returns unswiped profiles (never leaks `incoming_like`) |
+| `/api/swipe` (or `/swipe`) | `POST` | Records a like or pass; returns `{ matched: true, match: ... }` on mutual match |
+| `/api/matches` (or `/matches`) | `GET` | Returns mutual matches only |
+| `/api/messages` | `GET` / `POST` | Fetches and sends simulated chat messages for a match |
+| `/api/reset` (or `/reset`) | `POST` | Wipes swipes and re-seeds clean demo state |
 
 ---
 
-## 🗂 Project Structure
+## 🧪 Testing Suite (`npm test`)
 
-```
-src/
-├── app/
-│   ├── layout.tsx                    # Root layout with Inter font
-│   ├── page.tsx                      # Home tab (intentionally blank)
-│   ├── discover/page.tsx             # Discover tab (swipe + matches)
-│   └── api/
-│       ├── feed/route.ts             # GET /api/feed
-│       ├── swipe/route.ts            # POST /api/swipe
-│       ├── matches/route.ts          # GET /api/matches
-│       └── reset/route.ts            # POST /api/reset
-├── features/discover/
-│   ├── types.ts                      # Public (safe) & internal types
-│   ├── seed.ts                       # 32-profile idempotent seeder
-│   ├── matching-service.ts           # Core match logic + privacy sanitization
-│   ├── components/
-│   │   ├── TabShell.tsx              # Layout with bottom tab bar
-│   │   ├── SwipeDeck.tsx             # Card stack with gestures
-│   │   ├── ProfileCard.tsx           # Individual profile card
-│   │   ├── MatchCelebrationModal.tsx # "It's a Match!" overlay
-│   │   ├── MatchesList.tsx           # Mutual matches list view
-│   │   └── EmptyFeedState.tsx        # Empty feed + reset button
-│   └── hooks/
-│       └── useDiscoverFeed.ts        # Client-side data fetching
-├── lib/
-│   └── db.ts                         # SQLite connection + schema
-└── tests/
-    └── matching-privacy.test.ts      # Privacy invariant tests
-```
+The test suite runs 16 automated tests covering:
+- Feed seeding count (`>= 30`) and public field sanitization
+- Exclusion of swiped profiles (`like` and `pass`)
+- Non-mutual like returns `matched: false`
+- Mutual like returns `matched: true` with match object
+- Zero leakage of `incoming_like` across feed, swipe, and match endpoints
+- Category filter matching logic
+- Shared-interests calculation and tailored icebreaker generator
+- Serverless session state serialization, HMAC signature verification, and tamper resistance
+- State persistence across DB/service re-initialization
 
 ---
 
-## 📋 Development
+## 📁 Repository Structure
 
-```bash
-npm run dev       # Start dev server (http://localhost:3000)
-npm run build     # Production build
-npm start         # Start production server
-npm run lint      # ESLint
-npm test          # Vitest
-npx tsc --noEmit  # Type-check
+```text
+├── .github/workflows/ci.yml         # CI workflow (lint, tsc, test, build)
+├── data/                            # SQLite database (gitignored at runtime)
+├── public/avatars/                  # 32 local SVG portraits (offline safe)
+├── src/
+│   ├── app/
+│   │   ├── layout.tsx               # Root layout
+│   │   ├── page.tsx                 # "Home" tab (intentionally blank per spec)
+│   │   ├── discover/page.tsx        # "Discover" tab
+│   │   └── api/                     # REST API endpoints (feed, swipe, matches, reset, messages)
+│   ├── features/discover/
+│   │   ├── components/              # SwipeDeck, ProfileCard, MatchCelebrationModal, MatchesList,
+│   │   │                            # MatchChatModal, InterestFilterBar, PrivacyAuditDrawer
+│   │   ├── hooks/useDiscoverFeed.ts # Feed, swipe, and telemetry hook
+│   │   ├── icebreakers.ts           # Shared-interests and icebreaker prompts
+│   │   ├── matching-service.ts      # Core matching domain logic
+│   │   ├── seed.ts                  # 32 seeded mock profiles (9 pre-seeded likers)
+│   │   └── types.ts                 # Safe public types vs server-only types
+│   ├── lib/
+│   │   ├── db.ts                    # SQLite & serverless detection
+│   │   ├── session.ts               # Authenticated session cookie encoder/decoder
+│   │   └── storage/adapter.ts       # Dual-mode SQLite + Vercel state adapter
+│   └── tests/
+│       └── matching-privacy.test.ts # 16 Vitest automated invariant tests
+├── AGENTS.md                        # Autonomous agent instructions
+├── PART_A_NOTES.md                  # Part A product teardown & feature proposals
+└── README.md                        # Project documentation
 ```
-
----
-
-## 🤖 Agent Instructions
-
-See [`AGENTS.md`](./AGENTS.md) for autonomous agent rules (Antigravity & Google Jules).
 
 ---
 
